@@ -10,7 +10,7 @@ namespace PortAudioSharpTest
 	
 	public class PortAudioTest
 	{
-        private const int NUM_SAMPLES = 50000;
+        private const int NUM_SAMPLES = 10000;
 
         private float[] callbackBuffer = new float[NUM_SAMPLES];
         short[][] sampleBuffer = new short[2][];
@@ -55,7 +55,8 @@ namespace PortAudioSharpTest
             sampleBuffer[1] = new short[NUM_SAMPLES];
             
             Audio audio = null;
-            WaveFileReader reader = new WaveFileReader("test.wav");
+            string path = new DirectoryInfo(Environment.CurrentDirectory).Parent.Parent.FullName;
+            WaveFileReader reader = new WaveFileReader(path + "/wave_files/test.wav");
 
             int readerPosition = 0;
             int lastWritten = 0;
@@ -91,9 +92,11 @@ namespace PortAudioSharpTest
 
                 while (lastWritten == writeIndex)
                 {
-                    System.Threading.Thread.Sleep(100);
+                    
                     //wait for it to finish reading the final buffer
                 }
+
+                System.Threading.Thread.Sleep(5000);
                 
 				audio.Stop();
 				
