@@ -2,6 +2,8 @@ using System;
 using System.Reflection;
 
 using PortAudioSharp;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace PortAudioSharpTest
 {
@@ -9,8 +11,11 @@ namespace PortAudioSharpTest
 	class MainClass
 	{
 		[STAThread]
-		public static void Main(string[] args)
+		public static void Main()
 		{
+            Application.EnableVisualStyles();
+            Application.Run(new Form1());
+
 			Console.WriteLine("PortAudioSharp Test");
 			Console.WriteLine("*******************");
 			Console.WriteLine();
