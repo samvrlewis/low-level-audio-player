@@ -6,14 +6,28 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using System.Threading;
 
 namespace PortAudioSharpTest
 {
     public partial class Form1 : Form
     {
+        public string filename;
+        
+        public delegate void updateMeter(int value);
+        public updateMeter myDelegate;
+        private wavFile wav = null;
+
+
+        
         public Form1()
         {
             InitializeComponent();
+            myDelegate = new updateMeter(updateDbMeter);
+            progressBar1.Maximum = 100;
+            progressBar1.Minimum = 0;
+            tb_offset.Text = "0";
+            tb_sampleRate.Text = "0";
         }
 
         private void openWaveToolStripMenuItem_Click(object sender, EventArgs e)
@@ -22,7 +36,50 @@ namespace PortAudioSharpTest
             open.Filter = "Wave File (*.wav)|*.wav;";
             if (open.ShowDialog() != DialogResult.OK) return;
 
-            waveViewer1.WaveStream = new NAudio.Wave.WaveFileReader(open.FileName);
+            filename = open.FileName;
+
+            //Thread myThread = new Thread(new ThreadStart(ThreadFunction));
+            //myThread.Start();
+
+            if (wav != null)
+                wav.Stop();
+
+            ThreadFunction();
         }
+        private void ThreadFunction()
+        {
+            wav = new wavFile(filename, Convert.ToInt16(tb_offset.Text), Convert.ToInt32(tb_sampleRate.Text),  this);
+            wav.Play();
+        }
+
+        private void updateDbMeter(int value)
+        {
+            progressBar1.Value = value;
+        }
+
+        private void tb_sampleRate_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            e.Handled = !char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar) && !(e.KeyChar == '.');
+        }
+
+        private void btn_stop_Click(object sender, EventArgs e)
+        {
+            if (wav != null)
+                wav.Stop();
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (wav != null)
+                wav.Stop();
+
+            Thread.Sleep(50); //let the audio thread have a bit of time to die
+        }
+
     }
 }
