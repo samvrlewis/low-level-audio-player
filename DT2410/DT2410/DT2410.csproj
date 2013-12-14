@@ -66,6 +66,7 @@
     </Compile>
     <Compile Include="src\Main.cs" />
     <Compile Include="src\PortAudioTest.cs" />
+    <Compile Include="src\wavRecorder.cs" />
     <Compile Include="src\wavFile.cs" />
     <None Include="app.config" />
   </ItemGroup>

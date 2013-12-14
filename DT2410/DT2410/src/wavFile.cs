@@ -58,7 +58,6 @@ namespace PortAudioSharpTest
             this.filename = filename;
             reader = new WaveFileReader(this.filename);
             sampleQueue = new Queue();
-
             this.form = form;
             this.inputChannels = reader.WaveFormat.Channels;
             this.outputChannels = 2;
@@ -73,7 +72,7 @@ namespace PortAudioSharpTest
             {
                 this.sampleRate = sampleFreq;
             }
-           
+            Console.WriteLine(this.sampleRate + " " + this.bitDepth + " " + this.inputChannels);
             //reader.Seek((int)startOffset*this.sampleRate, System.IO.SeekOrigin.Begin);
             reader.CurrentTime = reader.CurrentTime.Add(new TimeSpan(0, 0, 0, startOffset));
         }
