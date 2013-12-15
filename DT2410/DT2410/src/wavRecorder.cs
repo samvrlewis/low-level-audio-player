@@ -37,7 +37,7 @@ namespace PortAudioSharpTest
 
         private WaveFileWriter writer;
         private Queue sampleQueue;
-        private Form1 form; //we'll have to make a new form
+        private Form2 form; //we'll have to make a new form
 
         private IntPtr stream;
 
@@ -51,13 +51,14 @@ namespace PortAudioSharpTest
 
         //private file
 
-        public wavRecorder(string filename, Form1 form)
+        public wavRecorder(string filename, Form2 form)
         {
             this.filename = filename;
             this.sampleRate = 44100;
             this.bitDepth = 16;
             this.inputChannels = 1;
             this.outputChannels = 2;
+            this.frameSize = 4;
             
             this.cSamplePos = 0;
             this.mNumSeconds = 10; //won't record longer than this
@@ -131,8 +132,11 @@ namespace PortAudioSharpTest
             }
 
             byte[] buffer = new byte[NUM_SAMPLES]; //buffer to read the raw bytes into
-            Marshal.Copy(input, buffer, 0, (int)(frameCount * (bitDepth / 8) * 2)); //this might be something else, depending on mic?
+            Marshal.Copy(output, buffer, 0, (int)(frameCount * (bitDepth / 8) * 2)); //this might be something else, depending on mic?
             SoundPacket packet = new SoundPacket(buffer);
+
+            form.Invoke(form.myDelegate, new object[] { packet.averageDB });
+
             sampleQueue.Enqueue(packet); //send the buffer to the queue
             
             return PortAudio.PaStreamCallbackResult.paContinue;

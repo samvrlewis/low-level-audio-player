@@ -35,8 +35,6 @@ namespace PortAudioSharpTest
         public long numOfFrames;
         public long cSamplePos; // in bytes
 
-        public int startOffset;
-
         private WaveFileReader reader;
         private Queue sampleQueue;
         private Form1 form;
