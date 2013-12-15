@@ -32,7 +32,7 @@ namespace PortAudioSharpTest
 
         private void ThreadFunction()
         {
-            rec = new wavRecorder(tmpFilename, this);
+            rec = new wavRecorder(tb_filename.Text + ".wav", this);
             rec.Record();
         }
 
@@ -43,7 +43,7 @@ namespace PortAudioSharpTest
 
         private void tb_filename_KeyPress(object sender, KeyPressEventArgs e)
         {
-            e.Handled = !char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar) && !(e.KeyChar == '.');
+           
         }
         private void btn_record_Click(object sender, EventArgs e)
         {

@@ -57,8 +57,9 @@ namespace PortAudioSharpTest
             this.sampleRate = 44100;
             this.bitDepth = 16;
             this.inputChannels = 1;
-            this.outputChannels = 2;
-            this.frameSize = 4;
+            this.outputChannels = 1;
+            this.frameSize = 2;
+            this.form = form;
             
             this.cSamplePos = 0;
             this.mNumSeconds = 10; //won't record longer than this
@@ -85,16 +86,21 @@ namespace PortAudioSharpTest
                 if (sampleQueue.Count > 0)
                 {
 
-                    SoundPacket packet = (SoundPacket)sampleQueue.Dequeue();        
-                    form.Invoke(form.myDelegate, new object[] {packet.averageDB});
+                    byte[] packet = (byte[])sampleQueue.Dequeue();  
+      
+                    SoundPacket p = new SoundPacket(packet);
+                    form.Invoke(form.myDelegate, new object[] {p.averageDB});
                     
-                    writer.Write(packet.samples, cSamplePos, NUM_SAMPLES);
-
-                    cSamplePos += NUM_SAMPLES; // i think?
+                    writer.Write(packet, 0, packet.Length);
+                    //writer.Write()
+                   
                 }
 
             }
 
+            writer.Close();
+            
+           
             PortAudio.Pa_StopStream(stream);
 
         }
@@ -105,14 +111,40 @@ namespace PortAudioSharpTest
             callbackDelegate = new PortAudio.PaStreamCallbackDelegate(myPaStreamCallback);
             PortAudio.Pa_Initialize();
 
-            uint sampleFormat = 0;
+            uint sampleFormat = 8;
             
             //not sure why framesPerBuffer is so strange.
-            PortAudio.Pa_OpenDefaultStream(out stream, inputChannels, outputChannels, sampleFormat,
-                sampleRate / outputChannels, (uint)(NUM_SAMPLES / (frameSize * 2)), callbackDelegate, userdata);
+
+            //PortAudio.PaError error = PortAudio.Pa_OpenDefaultStream(out stream, inputChannels, outputChannels, sampleFormat,
+                //sampleRate / outputChannels, (uint)(NUM_SAMPLES / (frameSize * 2)), callbackDelegate, userdata);
+
+            //Console.WriteLine(error.ToString());
+
+       
+
+            PortAudio.PaStreamParameters outputparams = new PortAudio.PaStreamParameters();
+
+            outputparams.channelCount = 1;
+            outputparams.sampleFormat = PortAudio.PaSampleFormat.paInt16;
+            outputparams.device = PortAudio.Pa_GetDefaultInputDevice();
+            outputparams.suggestedLatency = PortAudio.Pa_GetDeviceInfo(outputparams.device).defaultLowInputLatency;
+            outputparams.hostApiSpecificStreamInfo = IntPtr.Zero;
+
+
+            PortAudio.PaStreamParameters a = new PortAudio.PaStreamParameters();
+
+            a.channelCount = 1;
+            a.sampleFormat = PortAudio.PaSampleFormat.paInt16;
+            a.device = PortAudio.Pa_GetDefaultOutputDevice();
+            a.suggestedLatency = PortAudio.Pa_GetDeviceInfo(a.device).defaultLowOutputLatency;
+            a.hostApiSpecificStreamInfo = IntPtr.Zero;
+
+           
+            PortAudio.PaError error =  PortAudio.Pa_OpenStream(out stream, ref outputparams, ref a, 44100, 
+                (uint)(NUM_SAMPLES / (frameSize)), PortAudio.PaStreamFlags.paClipOff, callbackDelegate, IntPtr.Zero );
 
             PortAudio.Pa_StartStream(stream);
-
+          
             Thread myThread = new Thread(new ThreadStart(record_loop));
             myThread.Start();
         }
@@ -132,12 +164,14 @@ namespace PortAudioSharpTest
             }
 
             byte[] buffer = new byte[NUM_SAMPLES]; //buffer to read the raw bytes into
-            Marshal.Copy(output, buffer, 0, (int)(frameCount * (bitDepth / 8) * 2)); //this might be something else, depending on mic?
-            SoundPacket packet = new SoundPacket(buffer);
+            Marshal.Copy(input, buffer, 0, (int)(NUM_SAMPLES / (frameSize))); //this might be something else, depending on mic?
+            //SoundPacket packet = new SoundPacket(buffer);
 
-            form.Invoke(form.myDelegate, new object[] { packet.averageDB });
+            //form.Invoke(form.myDelegate, new object[] { packet.averageDB });
 
-            sampleQueue.Enqueue(packet); //send the buffer to the queue
+            //Console.WriteLine("in the callback");
+
+            sampleQueue.Enqueue(buffer); //send the buffer to the queue
             
             return PortAudio.PaStreamCallbackResult.paContinue;
         }

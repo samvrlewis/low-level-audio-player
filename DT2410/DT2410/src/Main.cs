@@ -15,6 +15,7 @@ namespace PortAudioSharpTest
 		{
             Application.EnableVisualStyles();
             Application.Run(new Form2());
+            Application.Run(new Form1());
 
 			Console.WriteLine("PortAudioSharp Test");
 			Console.WriteLine("*******************");

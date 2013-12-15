@@ -192,6 +192,7 @@ namespace PortAudioSharpTest
         public int averageDB;
         const int minDB = 91; // == 20*log10(1/short.MaxValue)
         const double maxShort = (double)short.MaxValue;
+        public short[] s_samples;
             
         public SoundPacket(byte[] samples)
         {
@@ -201,7 +202,7 @@ namespace PortAudioSharpTest
 
         private int getAverageDB()
         {
-            short[] s_samples = new short[samples.Length / 2];
+            s_samples = new short[samples.Length / 2];
             Buffer.BlockCopy(samples, 0, s_samples, 0, samples.Length); //copy them to a buffer of samples
 
             int total = 0;
