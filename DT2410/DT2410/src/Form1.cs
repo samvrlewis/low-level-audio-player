@@ -32,25 +32,20 @@ namespace PortAudioSharpTest
 
         private void openWaveToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            if (wav != null)
+                wav.Stop();
+            
             OpenFileDialog open = new OpenFileDialog();
             open.Filter = "Wave File (*.wav)|*.wav;";
             if (open.ShowDialog() != DialogResult.OK) return;
 
             filename = open.FileName;
 
-            //Thread myThread = new Thread(new ThreadStart(ThreadFunction));
-            //myThread.Start();
+            wav = new wavFile(filename, this);
+            tb_sampleRate.Text = wav.sampleRate.ToString();
 
-            if (wav != null)
-                wav.Stop();
-
-            ThreadFunction();
         }
-        private void ThreadFunction()
-        {
-            wav = new wavFile(filename, Convert.ToInt16(tb_offset.Text), Convert.ToInt32(tb_sampleRate.Text),  this);
-            wav.Play();
-        }
+        
 
         private void updateDbMeter(int value)
         {
@@ -79,6 +74,31 @@ namespace PortAudioSharpTest
                 wav.Stop();
 
             Thread.Sleep(50); //let the audio thread have a bit of time to die
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            if (wav != null)
+            {
+                if (!wav.isPlaying)
+                {
+                    wav.isPlaying = true;
+
+                    wav.set_sample_rate(Convert.ToInt32(tb_sampleRate.Text));
+                    wav.set_offset(Convert.ToInt32(tb_offset.Text));
+                    wav.Play();
+                }
+
+                wav.Unpause();
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (wav != null)
+            {
+                wav.Pause();
+            }
         }
 
     }

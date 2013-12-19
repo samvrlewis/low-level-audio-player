@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.Threading;
+using System.IO;
 
 namespace PortAudioSharpTest
 {
@@ -32,8 +33,18 @@ namespace PortAudioSharpTest
 
         private void ThreadFunction()
         {
-            rec = new wavRecorder(tb_filename.Text + ".wav", this);
+            string filename = tb_filename.Text + ".wav";
+            if (File.Exists(filename))
+            {
+                if (!(MessageBox.Show("Overwrite file " + filename + "?", "File exists", MessageBoxButtons.YesNo) == DialogResult.Yes))
+                {
+                    return;
+                }
+            }
+
+            rec = new wavRecorder(filename, this);
             rec.Record();
+
         }
 
         private void updateDbMeter(int value)
@@ -48,13 +59,23 @@ namespace PortAudioSharpTest
         private void btn_record_Click(object sender, EventArgs e)
         {
             if (rec == null)
+            {
                 ThreadFunction();
+            } else
+            {
+                if (!rec.isRecording)
+                {
+                    ThreadFunction();
+                }
+            }
         }
 
         private void btn_stop_Click(object sender, EventArgs e)
         {
             if (rec != null)
                 rec.Stop();
+
+            rec = null;
         }
 
         private void Form2_Load(object sender, EventArgs e)

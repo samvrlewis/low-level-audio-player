@@ -24,6 +24,7 @@ namespace PortAudioSharpTest
         private const int NUM_SAMPLES = 4096/8;
         private const int QUEUE_LENGTH = 40;
         private bool stop_flag = false;
+        private bool pause_flag = false;
 
         public string filename;
         public int inputChannels;
@@ -34,6 +35,7 @@ namespace PortAudioSharpTest
         public long numOfSamples;
         public long numOfFrames;
         public long cSamplePos; // in bytes
+        public bool isPlaying = false;
 
         private WaveFileReader reader;
         private Queue sampleQueue;
@@ -51,7 +53,7 @@ namespace PortAudioSharpTest
 
         //private file
 
-        public wavFile(string filename, int startOffset, int sampleFreq, Form1 form)
+        public wavFile(string filename, Form1 form)
         {
             this.filename = filename;
             reader = new WaveFileReader(this.filename);
@@ -66,27 +68,49 @@ namespace PortAudioSharpTest
             this.numOfFrames = this.numOfSamples / this.frameSize;
             this.cSamplePos = 0;
 
-            if (sampleFreq != 0)
-            {
-                this.sampleRate = sampleFreq;
-            }
             Console.WriteLine(this.sampleRate + " " + this.bitDepth + " " + this.inputChannels);
             //reader.Seek((int)startOffset*this.sampleRate, System.IO.SeekOrigin.Begin);
-            reader.CurrentTime = reader.CurrentTime.Add(new TimeSpan(0, 0, 0, startOffset));
+        }
+
+        public void set_offset(int offset)
+        {
+            reader.CurrentTime = new TimeSpan(0, 0, 0);
+            reader.CurrentTime = reader.CurrentTime.Add(new TimeSpan(0, 0, 0, offset));
+        }
+
+        public void set_sample_rate(int sampleRate)
+        {
+            this.sampleRate = sampleRate;
         }
 
         public void Stop()
         {
             stop_flag = true;
+            sampleQueue.Clear();
+        }
+
+        public void Pause()
+        {
+            pause_flag = true;
+        }
+
+        public void Unpause()
+        {
+            pause_flag = false; 
         }
         
         private void play_loop()
         {
-            while (cSamplePos < reader.Length)
+            while (reader.Position < reader.Length)
             {
                 if (stop_flag)
                 {
                     break;
+                }
+
+                if (pause_flag)
+                {
+                    continue; //just wait for it to be unpaused
                 }
 
                 //This is essentially working as a circular/FIFO buffer, where new sample packets are only added to the queue
@@ -109,12 +133,17 @@ namespace PortAudioSharpTest
 
             }
 
+            this.stop_flag = true;
+
             while (PortAudio.Pa_IsStreamActive(stream) != 0)
             {
                 
             }
 
             PortAudio.Pa_StopStream(stream);
+            this.isPlaying = false;
+            cSamplePos = 0;
+            this.stop_flag = false;
 
         }
 
@@ -146,7 +175,7 @@ namespace PortAudioSharpTest
 
             }
             //not sure why framesPerBuffer is so strange.
-            PortAudio.Pa_OpenDefaultStream(out stream, inputChannels, outputChannels, sampleFormat,
+            PortAudio.PaError error = PortAudio.Pa_OpenDefaultStream(out stream, inputChannels, outputChannels, sampleFormat,
                 sampleRate / outputChannels, (uint)(NUM_SAMPLES / (frameSize * 2)), callbackDelegate, userdata);
 
             PortAudio.Pa_StartStream(stream);
@@ -166,13 +195,21 @@ namespace PortAudioSharpTest
 
             SoundPacket packet;
 
-            if (sampleQueue.Count == 0 || stop_flag)
+            if (stop_flag && sampleQueue.Count == 0)
             {
                 //this is likely a bad way of checking if the stream is complete as it could get in here if the read thread
                 //falls behind but it works behind. 
                 //todo: find a smarter way of knowing when the stream completes
 
                 return PortAudio.PaStreamCallbackResult.paComplete;
+            }
+
+            if (sampleQueue.Count == 0)
+            {
+                byte[] buffer = new byte[NUM_SAMPLES];
+                Marshal.Copy(buffer, 0, output, (int)(frameCount * (bitDepth / 8) * 2));
+
+                return PortAudio.PaStreamCallbackResult.paContinue; //probably paused
             }
 
             packet = (SoundPacket)sampleQueue.Dequeue();

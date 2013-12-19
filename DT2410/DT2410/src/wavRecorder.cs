@@ -7,6 +7,7 @@ using PortAudioSharp;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Threading;
+using System.IO;
 
 namespace PortAudioSharpTest
 {
@@ -23,13 +24,15 @@ namespace PortAudioSharpTest
         Random newRand = new Random();
         private const int NUM_SAMPLES = 4096/8;
         private const int QUEUE_LENGTH = 40;
+        private int MIN_DRIVE_SPACE_MB = 500;
+
         private bool stop_flag = false;
+        public bool isRecording = false;
 
         public string filename;
         public int inputChannels;
         public int outputChannels;
         public int bitDepth;
-        public int frameSize; //for 16 bit stereo, it would be 2 bytes * 2 channels = 4 bytes
         public int sampleRate;
         public int cSamplePos; // in bytes
         public int mSamplePos;
@@ -54,15 +57,14 @@ namespace PortAudioSharpTest
         public wavRecorder(string filename, Form2 form)
         {
             this.filename = filename;
-            this.sampleRate = 44100;
+            this.sampleRate = 22050;
             this.bitDepth = 16;
             this.inputChannels = 1;
             this.outputChannels = 1;
-            this.frameSize = 2;
             this.form = form;
             
             this.cSamplePos = 0;
-            this.mNumSeconds = 10; //won't record longer than this
+            this.mNumSeconds = 600; //won't record longer than this
             this.mSamplePos = sampleRate * mNumSeconds;
 
             writer = new WaveFileWriter(filename, new WaveFormat(sampleRate, bitDepth, outputChannels));
@@ -72,6 +74,24 @@ namespace PortAudioSharpTest
         public void Stop()
         {
             stop_flag = true;
+        }
+
+        private void check_diskspace()
+        {
+            FileInfo f = new FileInfo(writer.Filename);
+            string driveName = Path.GetPathRoot(f.FullName);
+
+            foreach (DriveInfo drive in DriveInfo.GetDrives())
+            {
+                if (drive.IsReady && drive.Name == driveName)
+                {
+                    if (drive.AvailableFreeSpace/(1024*1024) < this.MIN_DRIVE_SPACE_MB)
+                    {
+                        MessageBox.Show("Out of disk space! Aborting!");
+                        this.Stop();
+                    }
+                }
+            }
         }
         
         private void record_loop()
@@ -86,18 +106,19 @@ namespace PortAudioSharpTest
                 if (sampleQueue.Count > 0)
                 {
 
+
+                    check_diskspace();
+                    
                     byte[] packet = (byte[])sampleQueue.Dequeue();  
       
                     SoundPacket p = new SoundPacket(packet);
                     form.Invoke(form.myDelegate, new object[] {p.averageDB});
                     
                     writer.Write(packet, 0, packet.Length);
-                    //writer.Write()
-                   
                 }
 
             }
-
+            this.isRecording = false;
             writer.Close();
             
            
@@ -111,17 +132,6 @@ namespace PortAudioSharpTest
             callbackDelegate = new PortAudio.PaStreamCallbackDelegate(myPaStreamCallback);
             PortAudio.Pa_Initialize();
 
-            uint sampleFormat = 8;
-            
-            //not sure why framesPerBuffer is so strange.
-
-            //PortAudio.PaError error = PortAudio.Pa_OpenDefaultStream(out stream, inputChannels, outputChannels, sampleFormat,
-                //sampleRate / outputChannels, (uint)(NUM_SAMPLES / (frameSize * 2)), callbackDelegate, userdata);
-
-            //Console.WriteLine(error.ToString());
-
-       
-
             PortAudio.PaStreamParameters outputparams = new PortAudio.PaStreamParameters();
 
             outputparams.channelCount = 1;
@@ -131,7 +141,7 @@ namespace PortAudioSharpTest
             outputparams.hostApiSpecificStreamInfo = IntPtr.Zero;
 
 
-            PortAudio.PaStreamParameters a = new PortAudio.PaStreamParameters();
+            PortAudio.PaStreamParameters a = new PortAudio.PaStreamParameters(); //uninteresting output params cause i cant give it null
 
             a.channelCount = 1;
             a.sampleFormat = PortAudio.PaSampleFormat.paInt16;
@@ -140,9 +150,10 @@ namespace PortAudioSharpTest
             a.hostApiSpecificStreamInfo = IntPtr.Zero;
 
            
-            PortAudio.PaError error =  PortAudio.Pa_OpenStream(out stream, ref outputparams, ref a, 44100, 
-                (uint)(NUM_SAMPLES / (frameSize)), PortAudio.PaStreamFlags.paClipOff, callbackDelegate, IntPtr.Zero );
+            PortAudio.PaError error =  PortAudio.Pa_OpenStream(out stream, ref outputparams, ref a, this.sampleRate, 
+                (uint)NUM_SAMPLES, PortAudio.PaStreamFlags.paClipOff, callbackDelegate, IntPtr.Zero );
 
+            this.isRecording = true;
             PortAudio.Pa_StartStream(stream);
           
             Thread myThread = new Thread(new ThreadStart(record_loop));
@@ -163,13 +174,8 @@ namespace PortAudioSharpTest
                 return PortAudio.PaStreamCallbackResult.paComplete;
             }
 
-            byte[] buffer = new byte[NUM_SAMPLES]; //buffer to read the raw bytes into
-            Marshal.Copy(input, buffer, 0, (int)(NUM_SAMPLES / (frameSize))); //this might be something else, depending on mic?
-            //SoundPacket packet = new SoundPacket(buffer);
-
-            //form.Invoke(form.myDelegate, new object[] { packet.averageDB });
-
-            //Console.WriteLine("in the callback");
+            byte[] buffer = new byte[NUM_SAMPLES*2]; //buffer to read the raw bytes into
+            Marshal.Copy(input, buffer, 0, (int)(NUM_SAMPLES*2));
 
             sampleQueue.Enqueue(buffer); //send the buffer to the queue
             
